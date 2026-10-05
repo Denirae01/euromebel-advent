@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Проверка промокодов — Новогодний дом EuroMebel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root { --navy:#071F45; --blue:#00509E; --red:#E30016; --ink:#142040; --muted:#56637A; --line:#D5DCE8; --bg:#F3F6FA; --ok:#1E7A45; --okbg:#E3F4EA; --warn:#8A5A00; --warnbg:#FFF1C7; --badbg:#FDE4E6; --bad:#B3000F; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font-family: Jost, sans-serif; }
+header { background: var(--navy); color: #fff; }
+.in { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+header .in { height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.logo { font-weight: 700; font-size: 22px; letter-spacing: .06em; }
+header span.sub { font-size: 15px; color: #C9D5E8; }
+main .in { padding-top: 32px; padding-bottom: 60px; display: flex; flex-direction: column; gap: 20px; }
+h1 { margin: 0; font-size: 32px; font-weight: 700; }
+.card { background: #fff; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 1px 0 var(--line); }
+label { font-size: 15px; font-weight: 600; color: var(--muted); }
+.row { display: flex; gap: 12px; flex-wrap: wrap; }
+input { flex: 1 1 220px; min-width: 0; height: 54px; padding: 0 18px; border: 1.5px solid #9AA9C2; border-radius: 14px; font: 500 18px Jost, sans-serif; color: var(--ink); }
+button { height: 54px; padding: 0 26px; border: 0; border-radius: 14px; background: var(--red); color: #fff; font: 700 17px Jost, sans-serif; cursor: pointer; }
+button.secondary { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1.5px #9AA9C2; }
+button[disabled] { opacity: .5; cursor: default; }
+:focus-visible { outline: 3px solid #FFC94A; outline-offset: 2px; }
+.msg { font-size: 15px; font-weight: 600; color: var(--bad); }
+.msg:empty { display: none; }
+.hint { font-size: 14px; color: var(--muted); line-height: 1.5; }
+.res { display: flex; flex-direction: column; gap: 12px; }
+.item { background: #fff; border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; border: 2px solid var(--line); }
+.item.active { border-color: var(--ok); }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.code { font-size: 26px; font-weight: 700; letter-spacing: .08em; color: var(--navy); }
+.badge { padding: 5px 12px; border-radius: 999px; font-size: 14px; font-weight: 700; }
+.b-active { background: var(--okbg); color: var(--ok); }
+.b-redeemed { background: var(--warnbg); color: var(--warn); }
+.b-expired { background: var(--badbg); color: var(--bad); }
+.offer { font-size: 20px; font-weight: 600; }
+.meta { font-size: 15px; color: var(--muted); line-height: 1.5; }
+.empty { padding: 20px; text-align: center; color: var(--muted); font-size: 16px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header><div class="in"><span class="logo">EUROMEBEL</span><span class="sub">Новогодний дом · для салонов</span></div></header>
+<main><div class="in">
+  <h1>Проверка промокода</h1>
+
+  <form class="card" id="login" autocomplete="off">
+    <label for="pin">PIN салона</label>
+    <div class="row"><input id="pin" type="password" inputmode="numeric" maxlength="12" autocomplete="off"><button type="submit">Войти</button></div>
+    <span class="msg" id="login-msg" role="alert"></span>
+    <span class="hint">PIN выдаёт маркетинг. Он хранится только до закрытия вкладки.</span>
+  </form>
+
+  <section id="work" hidden style="display:flex;flex-direction:column;gap:20px">
+    <form class="card" id="search">
+      <label for="q">Промокод или номер телефона покупателя</label>
+      <div class="row"><input id="q" placeholder="DOM05-AB2C или +7 701 234 56 78" autocomplete="off"><button type="submit">Найти</button></div>
+      <label for="salon">Ваш салон (запишется при погашении)</label>
+      <input id="salon" placeholder="Например: Алматы, салон на Абая">
+      <span class="msg" id="search-msg" role="alert"></span>
+    </form>
+    <div class="res" id="res" aria-live="polite"></div>
+    <button class="secondary" type="button" id="logout" style="align-self:flex-start">Выйти</button>
+  </section>
+</div></main>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  var CFG = window.ADVENT_CONFIG || {};
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var ss = { get: function (k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set: function (k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }, del: function (k) { try { sessionStorage.removeItem(k); } catch (e) {} } };
+  var ls = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+  var PIN = ss.get('em_staff_pin');
+  var ERR = { bad_pin: 'Неверный PIN', pin_locked: 'Слишком много попыток. Подождите 10 минут.', not_found: 'Промокод не найден', already_redeemed: 'Промокод уже погашен', expired: 'Срок действия промокода истёк' };
+  var ST = { active: ['Действует', 'b-active'], redeemed: ['Погашен', 'b-redeemed'], expired: ['Истёк', 'b-expired'] };
+
+  function api(action, body) {
+    body = Object.assign({ action: action, pin: PIN }, body || {});
+    if (window.ADVENT_DEMO_API) return window.ADVENT_DEMO_API(body);
+    if (!CFG.API_URL) return Promise.reject(new Error('API_URL не настроен'));
+    return fetch(CFG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }).then(function (r) { return r.json(); });
+  }
+
+  function showWork(on) { $('login').hidden = on; $('work').hidden = !on; if (on) $('q').focus(); }
+
+  $('salon').value = ls.get('em_staff_salon') || '';
+  $('salon').addEventListener('change', function () { ls.set('em_staff_salon', $('salon').value.trim()); });
+
+  $('login').addEventListener('submit', function (e) {
+    e.preventDefault();
+    PIN = $('pin').value.trim();
+    api('staffFind', { query: '—' }).then(function (r) {
+      if (r.ok) { ss.set('em_staff_pin', PIN); showWork(true); $('login-msg').textContent = ''; }
+      else $('login-msg').textContent = ERR[r.error] || 'Ошибка';
+    }).catch(function () { $('login-msg').textContent = 'Нет связи с сервером'; });
+  });
+
+  $('logout').addEventListener('click', function () { PIN = null; ss.del('em_staff_pin'); $('pin').value = ''; $('res').innerHTML = ''; showWork(false); });
+
+  function draw(items) {
+    if (!items.length) { $('res').innerHTML = '<div class="empty">Ничего не найдено</div>'; return; }
+    $('res').innerHTML = items.map(function (x) {
+      var st = ST[x.status];
+      return '<div class="item' + (x.status === 'active' ? ' active' : '') + '">' +
+        '<div class="top"><span class="code">' + esc(x.code) + '</span><span class="badge ' + st[1] + '">' + st[0] + '</span></div>' +
+        '<span class="offer">Окно ' + x.day + ': ' + esc(x.offer) + '</span>' +
+        '<span class="meta">Телефон ' + esc(x.phoneMasked) + ' · действует до ' + esc(x.untilText) +
+        (x.status === 'redeemed' ? '<br>Погашен ' + esc(x.redeemedAt) + (x.salon ? ', ' + esc(x.salon) : '') : '') + '</span>' +
+        (x.status === 'active' ? '<button type="button" data-redeem="' + esc(x.code) + '" style="align-self:flex-start">Погасить</button>' : '') +
+        '</div>';
+    }).join('');
+  }
+
+  var lastQuery = '';
+  function find(q) {
+    lastQuery = q;
+    $('search-msg').textContent = '';
+    return api('staffFind', { query: q }).then(function (r) {
+      if (!r.ok) { $('search-msg').textContent = ERR[r.error] || 'Ошибка'; if (r.error === 'bad_pin') $('logout').click(); return; }
+      draw(r.items);
+    }).catch(function () { $('search-msg').textContent = 'Нет связи с сервером'; });
+  }
+
+  $('search').addEventListener('submit', function (e) { e.preventDefault(); var q = $('q').value.trim(); if (q) find(q); });
+
+  $('res').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-redeem]'); if (!b) return;
+    var code = b.getAttribute('data-redeem');
+    if (!b.hasAttribute('data-armed')) {
+      b.setAttribute('data-armed', '1');
+      b.textContent = 'Подтвердить погашение ' + code;
+      return;
+    }
+    b.disabled = true;
+    api('staffRedeem', { code: code, salon: $('salon').value.trim() }).then(function (r) {
+      if (!r.ok) { $('search-msg').textContent = ERR[r.error] || 'Ошибка'; b.disabled = false; return; }
+      find(lastQuery);
+    }).catch(function () { $('search-msg').textContent = 'Нет связи с сервером'; b.disabled = false; });
+  });
+
+  if (PIN) showWork(true);
+})();
+</script>
+</body>
+</html>
